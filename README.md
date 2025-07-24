@@ -1,2 +1,2 @@
-# lets-do-cfd
-Step by step CFD codes for educational purposes
+# Lets code CFD
+CFD coding lectures for educational purposes
