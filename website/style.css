@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css?family=Cambay');
+@import url('https://fonts.googleapis.com/css?family=Roboto+Slab:400,700');
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu+Mono&display=swap');
+
+p
+{
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+}
+
+* {
+  --green-color: rgb(74,184,81);
+  --dark-gray-color: rgb(67, 83, 83);
+  --dark-blue-color: rgb(0, 0, 51);
+  --orange-color: rgb(223, 108, 79);
+  --yellow-color: rgb(236, 208, 111);
+  --light-blue-color: rgb(73, 197, 182);
+  --blue-color: rgb(26, 153, 170);
+  --background-color: white;
+ }
+
+body {
+  font-family: Cambay, Helvetica, sans-serif;
+  background: var(--background-color);
+  font-size: 100%;
+  -webkit-text-size-adjust: none;
+  font-weight: normal;
+}
+
+
+.header {
+  font-family: 'Roboto Slab', Georgia, serif;
+  padding: 35px 0px 40px 0px;
+  margin: 0px;
+  text-align: center;
+  background: var(--green-color);
+  color: white;
+}
+
+#header_h1 {
+  font-size:50px;
+  padding-bottom:25px;
+}
+
+#header_h2 {
+  font-size:30px;
+  padding-bottom:5px;
+}
+
+#header_h3 {
+  font-size:30px;
+  padding-bottom:0px;
+}
+
+
+.nav {
+  font-family: 'Roboto Slab', Georgia, serif;
+  height: 50px;
+  background-color: var(--dark-gray-color);
+  text-align: center;
+  font-size: 16px;
+}
+
+.nav a {
+  display: inline-block;
+  color: #f2f2f2;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+.nav a:hover {
+  color: var(--orange-color);
+}
+
+
+.main {
+  display: block;
+  max-width: 750px ;
+  margin-left: auto ;
+  margin-right: auto ;
+  line-height: 25px;
+  padding: 20px 0px 25px 0px;
+  font-size: 18px;
+}
+
+#main_h1 {
+  font-family: 'Roboto Slab', Georgia, serif;
+  font-size: 30px;
+  text-align: center;
+  font-weight: bold;
+  padding: 40px 0px 20px 0px;
+  line-height: 40px;
+}
+
+#main_h2 {
+  font-family: 'Roboto Slab', Georgia, serif;
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 50px;
+  text-decoration: underline;
+  padding: 0px 0px 20px 0px;
+}
+
+.red {
+  color: red;
+  font-style: italic;
+}
+
+.footer {
+  width: 750px ;
+  margin: auto ;
+  text-align: center;
+  font-size: 12px;
+  border-top: 1px;
+  border-top-style: solid;
+  padding: 10px 0px 20px 0px;
+}
+
+#code {
+  font-family: 'Ubuntu Mono', monospace;
+  font-size: 15px;
+  margin-left: 10px;
+  margin: 10px 0px 10px 0px;
+  padding: 3px 0px 3px 10px;
+  background: var(--dark-blue-color);
+  color: yellow;
+  border-radius: 7px;
+  border: 1px;
+  border-style: solid;
+  border-color: black;
+}
+

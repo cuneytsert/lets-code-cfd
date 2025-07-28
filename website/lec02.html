@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <link rel="stylesheet" type="text/css" href="style.css" />
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body>
+
+<div class="header">
+  <p id="header_h1"> Let's Code CFD  </p>
+  <p id="header_h2"> Lectures about Developing Flow Solvers  </p>
+  <p id="header_h3"> by Dr. Cuneyt Sert   </p>
+</div>
+
+
+<div class="nav">
+  <a href="index.html">   Home</a>
+  <a href="changes.html"> Change Log</a>
+  <a href="lec00.html">   Lecture 0</a>
+  <a href="lec01.html">   Lecture 1</a>
+  <a href="lec02.html">   Lecture 2</a>
+</div>
+
+<div class="main">
+
+  <a name="2">
+  <p id="main_h1">Lecture 2. Our First Flow Solver</p>
+
+ <center> <b>(This lecture is under construction)</b> </center> <br>
+
+  We will be writing our first flow solver in this lecture. It will be a long lecture because I need to
+  introduce many fundamentals for the first time. The code we'll be writing has the following properties and limitations,
+  <ul>
+     <li> Works with 2D, isothermal, constant property, laminar incompressible flows</li>
+     <li> Uses the finite volume method formulation</li>
+     <li> Uses the projection method (fractional step method)</li>
+     <li> Works with Cartesian, uniform, colocated meshes</li>
+     <li> Solves the lid-driven cavity benchmark problem</li>
+  </ul>
+
+  Let's talk about each of these briefly.
+
+  <br><br>
+
+  <b><u>2D, isothermal, constant property, laminar incompressible flow:</u></b> Traditionally speaking, compressible
+  and incompressible flow solvers use different discretization methods. That's why one of the first settings you
+  do to solve a problem using a commercial CFD software is to decide whether your flow is compressible or not.
+  And this selection affects other selections that will come next. We will start our journey with an incompressible
+  solver because that is where my expertise is. By definition, density is constant in an incompressible flow.
+  By "isothermal", we mean a constant temperture flow, i.e. we are ignoring the heat transfer effects. By
+  "constant property", we mean that the viscosity is also constant. We limit ourselves to laminar flows because
+  turbulent flows are harder to simulate numerically because of two reasons, i) they typically have higher Reynolds
+  number, which is inherently harder to simulate, ii) turbulence needs to be modeled in some way such as by using
+  Reynolds Averaged Reynolds Averaged (RANS) approach. We don't want to deal with these difficulties right now.
+  And finally, we will go with two-dimensional planar flows, just for simplicity.
+
+  <br><br>
+
+  <b><u>Finite volume method (FVM):</u></b> FVM is the most common method used in CFD to discretize the governing
+  differential equations. The other two classical methods, finite difference and finite element, can also be used,
+  as well as a non-traditional one such as a particle based or a meshless method. We will stick with the classical
+  FVM in our lectures.
+
+  <br><br>
+
+  <b><u>Projection method:</u></b> Unlike compressible flows, incompresible flows have this difficulty known as the
+  <span class="red">pressure velocity decoupling</span>, which is related to the role of pressure and the role of the continuity
+  equation in incompressible flows. The two most commonly used techniques to handle this are, i) the pressure correction approach,
+  such as the famous SIMPLE method used in almost all commercial CFD software, and ii) the projection approach that we will
+  study in this lecture. We will go with the latter because of its simplicity. The former will be the topic of a future lecture.
+
+  <br><br>
+
+  <b><u>Cartesian, uniform, colocated meshes:</u></b> FVM can work with any sort of unstructured mesh, but for simplicity we will
+  begin with a structured Cartesian mesh, with mesh lines going parallel to the coordinate axes, i.e. perfectly vertical or
+  horizontal. For the simulation of incompressible flows, there is this distinction between <span class="red">staggered and
+  colocated meshes</span>, which has to do with the storage positions of velocity and pressure unknowns. Typically, introductory
+  lectures such as this one start with a staggered mesh due to its superior stability, but I find it a bit confusing, and here I
+  want to use a colocated mesh, because that is what we need to do eventually when it is time to handle complicated geometries
+  with unstructured meshes.
+
+  <br><br>
+
+  <b><u>Lid-driven cavity (LDC) problem:</u></b> LDC is the popular "hello world" kind of test problem of new incompressible flow solvers.
+  This is a problem that can yield not-that-simple flow patterns inside an extremely simple geometry with very simple boundary conditions.
+  Just a square box with 3 stationary walls, and a sliding lid at the top. Similar to how you write a "hello world" code before anything
+  else when you learn a new programming language, you solve the LDC problem before anything else when you develop a new incompresible
+  flow solver.
+
+  <a name="2.1">
+  <p id="main_h2">2.1. Governing Equations</p>
+
+  Consider an incompressible, isothermal, constant property flow of a Newtonian fluid. The governing equations are the following
+  continutiy (mass conservation) and linear momentum equations, together called the Navier-Stokes equations in CFD. We do not
+  need to worry about the energy equation for an isothermal, constant property flow such as the one we are dealing with here.
+
+  \[ \nabla \cdot \vec{V} = 0 \tag{2.1a}\]
+  \[ \frac{\partial \vec{V}}{\partial t} + \vec{V} \cdot \nabla \vec{V} = - \frac{1}{\rho} \nabla p + \nu \nabla ^2 \vec{V} \tag{2.1b}\]
+  
+  where \(\nu = \mu/\rho\) is the kinematic viscosity. Eqn. (2.1a) says that the velocity field of an incompressible flow needs
+  to be divergence free at all times. Eqn. (2.1b) has the unsteady, advection, pressure and viscous terms. The non-linear
+  advection term is written in a specific form, which can be done differently. For example it can also be written as
+  \(\nabla \cdot ( \vec{V}\vec{V} ) \), which is equal to \(\vec{V} \cdot \nabla \vec{V} + \vec{V} (\nabla
+  \cdot \vec{V})\). But the second term of this expression is zero due to the continuity equation, and the remaining
+  term is what we have in Eqn. (2.1b).
+  
+  <br><br>
+  
+  For the simplified 2D case on the <i>xy</i> plane, the above equations simplify to the following scalar,
+  open form
+ 
+  \[\frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} =0  \tag{2.2a} \]
+  \[\frac{\partial u}{\partial t} + u \frac{\partial u}{\partial x} + v \frac{\partial u}{\partial y} = 
+    - \frac{1}{\rho} \frac{\partial p}{\partial x} + \nu \left( \frac{\partial ^2 u}{\partial x^2} + 
+      \frac{\partial ^2 u}{\partial y^2} \right) \tag{2.2b} \]
+  \[\frac{\partial v}{\partial t} + u \frac{\partial v}{\partial x} + v \frac{\partial v}{\partial y} =
+    - \frac{1}{\rho} \frac{\partial p}{\partial y} + \nu \left( \frac{\partial ^2 v}{\partial x^2} +
+      \frac{\partial ^2 v}{\partial y^2} \right) \tag{2.2c} \]
+
+  where \(u\) and \(v\) are the velocity components in the <i>x</i> and <i>y</i> directions. A 2D problem is governed by these
+  3 scalar equations for 3 scalar unknowns, \(u\), \(v\), \(p\). Interesting features, all related to pressure, of this equation
+  set are; i) there is no pressure in the continuity equation, ii) there is no time derivative of pressure (even for unsteady
+  flows), and iii) the pressure does not appear as itself, but only in the form of its space derivatives.
+
+  <a name="2.2">
+  <p id="main_h2">2.2. The Projection Method</p>
+  
+  The projection method that we are using in this lecture is based on the unsteady forms of the governing equations, as seen by the
+  time derivatives that appear in Eqns. (2.1) or (2.2). These equations can be used to solve both steady and unsteady problems.
+  The LDC problem is actually a steady problem for small enough Reynolds number values, such as less than 5000. The solution we
+  are after is the steady state, i.e. time independent solution, which has all zero time derivatives. But the problem can still
+  be solved using an unsteady formulation by starting from an initial condition and marching in time until the steady state is
+  reached. This is exactly what the projection method does.
+
+  <br><br>
+
+  The difficulty of performing a time-marching solution for an incompressible flow is that there is no time derivative of pressure
+  in the equations. This is true even for an unsteady problem. It is associated with the elliptic nature of the pressure waves in
+  incompressible flows. Pressure waves in a trully incompressible flow move at infinite speed, yielding infinite Mach number, and
+  rendering the time derivatives of pressure useless.
+
+  <br><br>
+
+  Therefore, the main challenge here is to find out a way to update the pressure field during a time-marching solution when there
+  is no time derivative for it. There is no such difficulty for compressible flows, because the continuity equation would then
+  have a time derivative of density, which can be used to advance the density field in time. And by using the energy equation we
+  can advance the temperature field in time. Also we can make use of an equation of state, such as the ideal gas law, to update
+  the pressure in time by using the updated density and temperature fields. This is known as the <span class="red">density-based
+  formulation </span>, which is the classical way of solving compressible flows. However, it cannot be used directly for
+  incompressible flows because i) there is no time derivative in the continuity equation, ii) there is no equation of state for
+  incompressible flows.
+
+  <br><br>
+
+  For compressible flows, the continuity equation, with its time derivative, is a transport equation. It tells us how the density
+  field is transported in the flow domain. But for incompressible flows, the continuity equation, without a time derivative, is
+  not a transport equation anymore. It is rather a kinematic constraint equation on the velocity field, forcing it to be divergence
+  free. Both the physical and the mathematical nature of the continutiy equation are completely different in compressible and
+  incompressible flows.
+
+  <br><br>
+
+  The projection method gives us a chance to perform a time-marching solution of incompressible flows in an economical way. To
+  facilitate a time-marching solution, let's first divide the continuous time domain into discrete time levels with a constant
+  spacing of \(\Delta t\), known as the time step size. The solution will start with initial conditions specified at time level
+  0, and we first calculate the solution at time level 1, then at level 2, and so on. Let's pretend that the velocity and the
+  pressure fields were already calculated at time level \(n\). The task is then to calculate them at the next time level \(n+1\).
+  For this, consider the following time-discretized forms of Eqn. (2.1),
+
+  \[ \nabla \cdot \vec{V}^{n+1} = 0 \tag{2.3a}\]
+  \[ \frac{\vec{V}^{n+1} - \vec{V}^n}{\Delta t} + \vec{V}^n \cdot \nabla \vec{V}^n = - \frac{1}{\rho} \nabla p^{n+1} +
+     \nu \nabla ^2 \vec{V}^n \tag{2.3b}\]
+
+  where the continuity equation is written at the new time level to force the new velocity field to be divergence free.
+  And we used the explicit Euler's method (see Lecture 1), the simplest choice, for time discretization of the momentum
+  equation, in which all the velocity terms are at time level \(n\) except the first one of the unsteady term. Also note
+  that the pressure term is written at time level \(n+1\) because \(p^{n+1}\) needs to be calculated somehow, and therefore
+  needs to be in the equations.
+
+  <br><br>
+
+  It is now possible to perform the space discretization of the equation set (2.3) to get a set of linear algebraic equations
+  with unknonws being the discrete velocity components and pressures at the cell centers at the new time level. This process
+  would yield a fully-discretized equation set in the form of
+
+  \[ \begin{bmatrix} A & 0 \\ B & C \end{bmatrix} \begin{Bmatrix} U^{n+1} \\ p^{n+1} \end{Bmatrix} = 
+     \begin{Bmatrix} rhs_1 \\ rhs_2\end{Bmatrix} \tag{2.4}\]
+
+  where the matrices \(A\), \(B\) and \(C\) form the coefficient matrix, an the \(U\) vector holds all the velocity components
+  at all the cell centers. Right-hand-side terms are due to the known terms at time level \(n\) and also due to the specified
+  boundary conditions. This linear algebraic equation system can now be solved to get the new time level values of the unknowns,
+  which can be problematic because of the lage size of the system and due to the undesired properties of the coefficient matrix,
+  such as being indefinite. This approach can be called the <span class="red">coupled approach</span> because both the velocity
+  and the pressure fields are obtained together by solving a single linear algebraic equation system. The alternative is the
+  <span class="red">decoupled approach</span>, which forms and solves separate discretized equation systems for the velocity
+  components and pressure unknowns. The projection method can be seen as a decoupled approach, which is advantageous in terms
+  of the properties of the coefficient matrices of the discretized equation systems. It is also advantegous in terms of memory
+  usage because it forms and solves a number of small linear algebraic systems instead of a single large one.
+
+  <br><br>
+
+  The projection method is not a single method, but a class of methods with several variations available in the
+  literature. Here we will use one of the simpler forms of it. To decouple the solutions of pressure and velocity unknowns,
+  an intermediate time level, level \(*\) is introduced in between levels \(n\) and \(n+1\) (hence the alternative name,
+  <span class="red"> fractional-step method</span>), and Eqn. (2.3b) is separated into two steps
+
+  \[ \frac{\vec{V}^* - \vec{V}^n}{\Delta t} + \vec{V}^n \cdot \nabla \vec{V}^n = \nu \nabla ^2 \vec{V}^n \tag{2.5a}\]
+  \[ \frac{\vec{V}^{n+1} - \vec{V}^*}{\Delta t} = - \frac{1}{\rho} \nabla p^{n+1} \tag{2.5b}\]
+  
+  It is important to note that these two steps add up to the original Eqn. (2.3b). The first step takes the velocity
+  field from level \(n\) to level \(*\), but by not including the pressure term. And the second step is responsible for the
+  dropped pressure term.
+  
+  <br><br>
+  
+  It is easy to get \(\vec{V}^*\) from Eqn. (2.5a) as shown below, because the previous time level velocity field,
+  \(\vec{V}^n\), is known.
+
+  \[ \mathrm{Step 1:} \quad \vec{V}^* = \vec{V}^n + \Delta t \left( - \vec{V} \cdot \nabla \vec{V} + \nu \nabla ^2 \vec{V} \right)^n \tag{2.6}\]
+  
+  However, Eqn. (2.5b) contains both \(\vec{V}^{n+1}\) and \(p^{n+1}\) unknowns, and can only be solved with the
+  help of the continuity equation. Taking the divergence of Eqn. (2.5b) we get
+
+  \[ \nabla \cdot \vec{V}^{n+1} - \nabla \cdot \vec{V}^* = - \frac{\Delta t}{\rho} \nabla^2 p^{n+1} \tag{2.7}\]
+ 
+  Setting the first term to zero based on the continuity equation, i.e. Eqn. (2.3a), and arranging yields
+
+  \[ \mathrm{Step 2:} \quad \nabla^2 p^{n+1} = \frac{\rho}{\Delta t} \nabla \cdot \vec{V}^* \tag{2.8}\]
+  
+  which is the <span class="red">pressure Poisson equation (PPE)</span> that we use to calculate the pressure field at the
+  new time level. Finally, we use it in Eqn. (2.5b) to gether with the already calculated \(\vec{V^*}\) to get the new
+  velocity field as follows
+
+  \[ \mathrm{Step 3:} \quad \vec{V}^{n+1} = \vec{V}^* - \frac{\Delta t}{\rho} \nabla p^{n+1} \tag{2.9}\]
+
+  To summarize, the version of the projection method that we are using in this lecture marches in time from level \(n\) to
+  \(n+1\) in three steps, as given in Eqns. (2.6), (2.8) and (2.9).
+
+  
+  <a name="2.3">
+  <p id="main_h2">2.3. Lid-driven cavity (LDC) Problem and the Mesh</p>
+
+  Figure 2.1 shows the geometry and the boundary conditions of the LDC problem. The lid (top wall) of a square cavity moves
+  towards right with a speed of \(U_{lid}\). Typically, the side length of the cavity \(L\), the density \(\rho\) and the
+  lid speed \(U_{lid}\) are taken to be 1, which gives a Reynolds number of \(Re=\rho U_{lid} L / \mu = 1 / \mu\). Therefore,
+  the Reynolds number, which is the only important non-dimensional parameter of the problem, can be set to any desired value
+  simply by setting the viscosity. Typical Reynolds numbers used in the literature are in the range of 100-5000. It is a good
+  exercise to think of what Re=5000 corresponds to when we use a real fluid such as water \((\rho = 1000 \, \mathrm{ kg/m^3},
+  \, \mu = 0.001 \, \mathrm{Pa \cdot s})\) inside a cavity of let's say 10 cm in size. To get Re=5000 in such a flow, the lid
+  speed should be 0.05 m/s = 5 cm/s, which is quite low. Try to move your finger with this speed to feel it. With the cavity
+  size being 10 cm, a fluid particle located at the top left corner of the lid moves to the top right corner in roughly about
+  2 seconds, which gives us a sense of the time scale of the problem.
+
+  <br><br>
+  <center> <img src="images/Fig.2.1.jpg" width="45%">
+  <br>
+  Fig. 2.1. Geometry and the boundary conditions of the LDC problem</center>
+
+  <br><br>
+
+  Figure 2.2 shows a sample structured, Cartesian, uniform finite volume mesh of 3x3=9 square cells. \(u\), \(v\) and \(p\)
+  unknowns are stored at the centroids (not the vertices) of the cells. We can use a double index notation to number the cells
+  and the corresponding unknowns, as shown on the left, or a single index notation as shown on the right. Both will be useful
+  for us in this lecture. The indices start from 0 instead of 1 to be consistent with the C++ language, where the array indices
+  start from 0. In total there are 9 cells and therefore 9 \(u\), \(v\) and \(p\) unknowns. In total there are 27 unknonws to
+  be determined.
+
+
+  <br><br>
+  <center> <img src="images/Fig.2.2.jpg" width="75%"></center>
+  <br>
+  <center> Fig. 2.2. 3x3=9 cell mesh of the LDC problem with cells numbered using double index notation and single index
+  notation</center>
+ 
+  <br><br>
+
+  The following relation holds between the indices of the double and single index notations
+
+  \[ Cell_{i,j} = Cell_P \,\, , \,\,\,\,\,\, \mathrm{where} \, \, \, P = j N_x+i \tag{2.10} \]
+
+  where \(N_x=3\) is the number of cells in the \(x\) direction. To test this relation, consider the cell\( (i=2,j=1)\),
+  which is also the cell \(P = 5\), as seen in the Fig. 2.2.
+
+  <br><br>
+
+  All the boundary conditions of the LDC problem are of velocity type, which results in a final steady state pressure field
+  that floats freely because pressure can only be determined up to an arbitrary constant if we do not fix it somewhere
+  in the problem domain. This is because incompressible flow euations do not involve the pressure itself, but only its space
+  derivatives. To overcome this ambiguity, we will fix the pressure at the lower left corner cell to zero, i.e. we will use
+  \(p_{0,0}=0\). This arbitrary selection has no effect on the resulting velocity field. If we set the pressure at another
+  cell to another value, all the pressure values will shift up or down by a certain constant value, but the velocity field
+  will remain the same. Unlike compressible flows, pressure is not a thermodynamic variable in incompressible flows, and
+  its direct value is not very meaningful physically, only its derivatives.
+
+  <br><br>
+
+  In introductory lectures such as this one, <span class="red">ghost cells</span> are usually used outside the problem
+  domain to simplify the implementation of the boundary conditions and to have a shorter code. Although they ease our life,
+  I find ghost cell usage confusing and prefer not to use them. This way we need to think about the discretization of the
+  boundary cells in more detail, which will help us to write more complicated codes easily in the future.
+
+
+  <a name="2.4">
+  <p id="main_h2">2.4. Finite Volume Method (FVM) Discretization</p>
+
+  We've talked about the time discretization in the earlier steps, and now we are ready to use FVM for space discretization.
+  Unline the simpler finite different method, FVM is an integral type method. Consider Eqn. (2.6) integrated over cell P,
+  \(\Omega_P\), of the mesh
+
+  \[ \int_{\Omega_P} {\vec{V}^* \, dxdy} = \int_{\Omega_P} {\vec{V}^n \, dxdy} + \int_{\Omega_P} 
+     {\Delta t \left( - \vec{V} \cdot \nabla \vec{V} + \nu \nabla ^2 \vec{V} \right)^n \, dxdy} \tag{2.11}\]
+ 
+  We can apply the Gauss divergence theorem to the last integral (see Lecture 1), to convert it to a closed line integral
+  over the boundaries of cell P, \(\partial \Omega_P\), to get
+
+  \[ \int_{\Omega_P} {\vec{V}^* \, dxdy} = \int_{\Omega_P} {\vec{V}^n \, dxdy} + \oint_{\partial \Omega_P} 
+     {\Delta t \left( - \vec{V} \vec{V} + \nu \nabla \vec{V} \right)^n \cdot \vec{n} \, ds} \tag{2.12}\]
+
+  Here it may be better to think of the advection term of Eqn. (2.11) in its alternative form, \(\nabla \cdot (\vec{V}\vec{V})\),
+  as discussed earlier. As you can see, one of the \(\nabla\) operators got dropped from the last term and a dot product
+  with the unit outward normal of the cell boundaries, \(\vec{n}\), is introduced. The last integral is no longer an area
+  integral, but a closed line integral.
+
+  <br><br>
+
+  A typical cell P of a structured, uniform Cartesian mesh with uniform grid spacing \(h\) is shown in Fig. 2.3, together with
+  its East, West, North and South neighbors. Cell centroids are shown with upper case letters and mid-points of the faces are
+  shown with lower case letters.
+
+  <br><br>
+  <center> <img src="images/Fig.2.3.jpg" width="70%"></center>
+  <center> Fig. 2.3. Cell P and its neighbors in a structured, Cartesian, uniform mesh </center>
+  
+  <br><br>
+  
+  The first and the second integrals of Eqn. (2.12) are easy to approximate. We can use the mid-point integration (see Lecture 1)
+  which evaluates the integral as the value of the integrand at the cell's centroid times the area of the cell. For cell P,
+  these integrals become
+
+  \[ \int_{\Omega_P} {\vec{V}^* \, dxdy} \approx \vec{V}^*_P A_P \quad , \quad \int_{\Omega_P} {\vec{V}^n \, dxdy} 
+     \approx \vec{V}^n_P A_P \tag{2.13} \]
+
+  where \(A_P = h^2\) is the area of cell P.
+
+  <br><br> 
+  
+  The last integral of Eqn. (2.12) needs some more attention. We can evaluate this closed line integral in 4 steps, line
+  integrals over the east, west, north and south faces of the cell.
+
+  \[ \oint_{\partial \Omega_P} {\Delta t \left( - \vec{V} \vec{V} + \nu \nabla \vec{V} \right)^n \cdot \vec{n} \, ds} 
+     \approx \sum_{f=e,w,n,s} {\Delta t \left( - \vec{V}_f \vec{V}_f + \nu \nabla \vec{V}_f \right)^n \cdot \vec{n}_f} \, L_f \tag{2.14} \]
+
+  where \(L_f\) is the length of face f. We again used the mid-point integration, i.e. the integral over a face is equal
+  to the value of the integrand at the center of the face times the length of the face. To proceed, let's focus on the east face
+  first. As seen in Fig. 2.3, unit outward normal of the east face is \(\vec{n}_e = \vec{i}\). The dot products in Eqn. (2.14)
+  become
+
+  \[ \vec{V}_e \cdot \vec{n}_e =  u_e \quad , \quad \nabla \vec{V}_e \cdot \vec{n}_e =  \frac{\partial \vec{V}_e}{\partial x} 
+     \approx  \frac{\vec{V}_E - \vec{V}_P}{h} \tag{2.15a}\]
+
+  where the <i>x</i> derivative at the east face is approximated using central differencing. Similarly, the dot products of Eqn.
+  (2.13) over the other three faces become (note that \(\vec{n}_w = -\vec{i}\), \(\vec{n}_n = \vec{j}\), \(\vec{n}_s = -\vec{j}\))
+
+  \[ \vec{V}_w \cdot \vec{n}_w = -u_w \quad , \quad \nabla \vec{V}_w \cdot \vec{n}_w = -\frac{\partial \vec{V}_w}{\partial x} 
+     \approx -\frac{\vec{V}_P - \vec{V}_W}{h} \tag{2.15b}\]
+  \[ \vec{V}_n \cdot \vec{n}_n =  v_n \quad , \quad \nabla \vec{V}_n \cdot \vec{n}_n =  \frac{\partial \vec{V}_n}{\partial y} 
+     \approx  \frac{\vec{V}_N - \vec{V}_P}{h} \tag{2.15c}\]
+  \[ \vec{V}_s \cdot \vec{n}_s = -v_s \quad , \quad \nabla \vec{V}_s \cdot \vec{n}_s = -\frac{\partial \vec{V}_s}{\partial y} 
+     \approx -\frac{\vec{V}_P - \vec{V}_S}{h} \tag{2.15d}\]
+
+  With all these, the integral of Eqn (2.14) becomes
+
+  \[ \oint_{\partial \Omega_P} {\Delta t \left( - \vec{V} \vec{V} + \nu \nabla \vec{V} \right)^n \cdot \vec{n} \, ds} \, \approx \, 
+     \Delta t \left( -\vec{V}_e u_e + \vec{V}_w u_w - \vec{V}_n v_n + -\vec{V}_s v_s \right)^n h \,\, \ldots \]
+  \[ \Delta t \, \nu \left( \frac{\vec{V}_E - \vec{V}_P}{h} - \frac{\vec{V}_P - \vec{V}_W}{h} + \frac{\vec{V}_N - \vec{V}_P}{h} -
+     \frac{\vec{V}_P - \vec{V}_S}{h} \right)^n h \tag{2.16} \]
+
+  Combining this with the approximations of other two integrals given in Eqn. (2.13), the discretized version of the first step
+  of the projection method, i.e. Eqn. (6) becomes (note that the whole equation is divided by \(h^2\))
+  
+  \[ \vec{V}^*_P = \vec{V}^n_P + \frac{\Delta t}{h} \left( -\vec{V}_e u_e + \vec{V}_w u_w - \vec{V}_n v_n + -\vec{V}_s v_s \right)^n \,\, \ldots \]
+  \[ \frac{\Delta t \, \nu}{h} \left( \frac{\vec{V}_E - \vec{V}_P}{h} - \frac{\vec{V}_P - \vec{V}_W}{h} + \frac{\vec{V}_N - \vec{V}_P}{h} - \frac{\vec{V}_P - \vec{V}_S}{h} \right)^n \tag{2.17} \]
+  
+  This is a vector equation and can be decomposed into the following x and y components by replacing \(\vec{V}\) with \(u\)
+  and \(v\), respectively
+  
+  \[ u^*_P = u^n_P + \frac{\Delta t}{h} \left( -u_e u_e + u_w u_w - u_n v_n + u_s v_s \right)^n \,\, \ldots \]
+  \[ \frac{\Delta t \, \nu}{h} \left( \frac{u_E - u_P}{h} - \frac{u_P - u_W}{h} + \frac{u_N - u_P}{h} - \frac{u_P - u_S}{h} \right)^n \tag{2.18a} \]
+  
+  \[ v^*_P = v^n_P + \frac{\Delta t}{h} \left( -v_e u_e + v_w u_w - v_n v_n + v_s v_s \right)^n \,\, \ldots \]
+  \[ \frac{\Delta t \, \nu}{h} \left( \frac{v_E - v_P}{h} - \frac{v_P - v_W}{h} + \frac{v_N - v_P}{h} - \frac{v_P - v_S}{h} \right)^n \tag{2.18b} \]
+ 
+  We also need to express the face center velocity components of the advection term in terms of the cell center velocity
+  components, which can be done by using <span class="red">central or upwind</span> type approximations. We will go with
+  the central option here, which yields the following approximations
+  
+  \[ u_e \approx \frac{u_E + u_P}{2} \, , \quad u_w \approx \frac{u_W + u_P}{2} \, , \quad v_s \approx \frac{v_N + v_P}{2} \, , \quad v_s \approx \frac{v_S + v_P}{2} \tag{2.19}\]
+
+  With this, the FVM discretization of the first step of the projection method, i.e. Eqn. (2.6) is completed.
+  
+  <br><br>
+  
+  Now we can start working on the FVM discretization of the second step, i.e. Eqn. (2.8), which is the PPE. We first need to
+  integrate it over cell P and apply the Gauss divergence theorem to the right-hand side term to get
+  
+  \[ \int_{\Omega_P} {\nabla^2 p^{n+1} \, dxdy} = \oint_{\partial \Omega_P} {\frac{\rho}{\Delta t} \left( \vec{V}^* \cdot \vec{n} \right) \, ds} \tag{2.20}\]
+  
+  The integral on the left hand side can be approximated as follows using second order central differencing (see Lecture 1)
+  
+  \[ \int_{\Omega_P} {\nabla^2 p^{n+1} \, dxdy} = \int_{\Omega_P} {\left( \frac{\partial ^2 p}{\partial x^2} +
+     \frac{\partial ^2 p}{\partial y^2} \right)_P \, dxdy} \approx \, \ldots \]
+  \[ \left( \frac{p_E - 2p_P + p_W}{h^2} + \frac{p_N - 2p_P + p_S}{h^2} \right) h^2 \tag{2.21}\]
+  
+  The closed line integral on the right-hand-side of Eqn. (2.20) can be separated into 4 line integrals over the faces of cell
+  P, and can be approximated using mid-point integration as follows
+  
+  \[ \oint_{\partial \Omega_P} {\frac{\rho}{\Delta t} \left( \vec{V}^* \cdot \vec{n} \right) \, ds} \approx
+  \frac{\rho}{\Delta t} \left(  u_e - u_w + v_n - v_s \right)^* \tag{2.22} \]
+  
+  Combining Eqns. (2.21) and (2.22), the discretized form of the second step of the projection method becomes
+
+  \[ \left( \frac{p_E - 2p_P + p_W}{h^2} + \frac{p_N - 2p_P + p_S}{h^2} \right) h^2 = 
+  \frac{\rho}{\Delta t} \left(  u_e - u_w + v_n - v_s \right)^* \tag{2.23}\]
+  
+  Note that the face velocity components seen on the right-hand-side should again be written in terms of cell center values
+  using Eqn. (2.19).
+  
+  <br><br>
+  
+  Finally, we can use FVM to discretize the third step of the projection method, i.e. Eqn. (2.9). Integrating it
+  over cell P, applying the Gauss divergence theorem to the pressure term and approximating the integrals using
+  mid-point integration, we get (you can work on the details yourself)
+  
+  \[ \vec{V}_P^{n+1} = \vec{V}_P^* - \frac{\Delta t}{\rho} \left( \left. \frac{\partial p}{\partial x} \right|_P \vec{i} +
+     \left. \frac{\partial p}{\partial y} \right|_P \vec{j} \right)^{n+1} \tag{2.24}\]
+  
+  which can be decomposed int the following <i>x</i> and <i>y</i> components
+
+  \[ u_P^{n+1} = u_P^* - \frac{\Delta t}{\rho} \left. \frac{\partial p}{\partial x} \right|_P^{n+1} \tag{2.25a} \]
+  \[ v_P^{n+1} = v_P^* - \frac{\Delta t}{\rho} \left. \frac{\partial p}{\partial y} \right|_P^{n+1} \tag{2.25b}\]
+  
+  where the pressure derivatives at the centroid of cell P can be approximated using central differencing as follows
+  (see Lecture 1)
+
+  \[ \left. \frac{\partial p}{\partial x} \right|_P \approx \frac{p_E - p_W}{2h} \quad , \quad
+     \left. \frac{\partial p}{\partial y} \right|_P \approx \frac{p_N - p_S}{2h} \tag{2.26}\]
+  
+  Here it is important to note that the last equation has no \(p_P\) in it. In other words \(u_P^{n+1}\) and \(u_P^{n+1}\)
+  values calculated in Eqn. (2.25) do not depend of the pressure value at cell P, which is not good. This may yield to
+  an oscillatory pressure field, known as a <span class="red">checkerboard pressure field</span>. A similar thing happens
+  on the right-hand-side of Eqn. (2.23), where the velocity components at the center of cell P cancel out when we approximate
+  face velocities using Eqn. (2.19). \(\vec{V}^*_P\) becomes uneffective in the equation that is used to get the \(p^{n+1}_P\).
+  These happen because we are using a colocated mesh, not a staggered one. We will continue with this formulation
+  and see what kind of undesired effects it will have on the solutions, if any. And if necessary, we will come up with a
+  cure in a future lecture.
+  
+  <br><br>
+	
+  To summarize, at every time level, FVM discretization of the projection method performs the following tasks
+  
+  <ul>
+   <li> <u>Step 1:</u> Calculate \(u^*\) and \(v^*\) using Eqns. (2.18a,b),
+   <li> <u>Step 2:</u> Calculate \(p^{n+1}\) field by solving Eqn. (2.23),</li>
+   <li> <u>Step 3:</u> Calculate \(u^{n+1}\) and \(v^{n+1}\) using Eqns. (2.25a,b).</li>
+  </ul>
+
+  Step 2 is about the solution of the PPE. Unlike steps 1 and 3, this step requires the solution of a system of linear
+  algebraic equations, which we will perform using the iterative <span class="red">Gauss-Seidel method</span>.
+
+
+  <a name="2.5">
+  <p id="main_h2">2.5. Code of Lecture 1</p>
+
+  We are now ready to talk about the code of this lecture, which can be downloaded from GITHUB SAYFASI. It is a single C++ file
+  which can be compiled and run using the standard g++ compiler on a Linux machine as follows
+  
+  
+  
+  
+  <a name="2.?">
+  <p id="main_h2">2.?. Give Feedback</p>
+
+  Please send your questions, comments, suggestions, corrections, etc. to <u>csert AT metu edu tr</u>.
+
+
+  <p id="main_h2">References</p>
+  D. Kwak, C. Kirk, C. S. Kim, "Computational Challenges of Viscous Incompressible Flows", NASA Ames Research Center Report.
+  PDF Access: https://ntrs.nasa.gov/api/citations/20040084569/downloads/20040084569.pdf
+  <br><br>
+  H. P. Langtangen, K.-A. Mardal, R. Winther, "Numerical Methods for Incompressible Viscous Flow", Uni. of Oslo Report,
+  PDF Access: https://wiki.math.ntnu.no/_media/ma8502/2014h/langtangen_etal_awr25.pdf
+
+
+  <br><br><br>
+  <center> <b>(This lecture is under construction)</b> </center> <br>
+
+</div>
+
+
+<div class="footer">
+  Powered by MathJax and Google Fonts.
+</div>
+
+</body>
+</html>

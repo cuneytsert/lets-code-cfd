@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <link rel="stylesheet" type="text/css" href="style.css" />
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body>
+
+
+<div class="header">
+  <p id="header_h1"> Let's Code CFD  </p>
+  <p id="header_h2"> Lectures about Developing Flow Solvers  </p>
+  <p id="header_h3"> by Dr. Cuneyt Sert   </p>
+</div>
+
+
+<div class="nav">
+  <a href="index.html">   Home</a>
+  <a href="changes.html"> Change Log</a>
+  <a href="lec00.html">   Lecture 0</a>
+  <a href="lec01.html">   Lecture 1</a>
+  <a href="lec02.html">   Lecture 2</a>
+</div>
+
+
+
+<div class="main">
+
+  <a name="1">
+  <p id="main_h1"> Lecture 1. Mathematical and Numerical Preliminaries </p>
+
+  <a name="1.1">
+  <p id="main_h2">1.1. Numerical Differentiation and Integration</p>
+  
+  Consider a discretized set of data in the form of
+  
+  \begin{matrix} x: & \, & \ldots & x_{i-2} & x_{i-1} & x_i & x_{i+1} & x_{i+2} & \ldots  \\
+                 f: & \, & \ldots & f_{i-2} & f_{i-1} & f_i & f_{i+1} & f_{i+2} & \ldots  \end{matrix}
+  
+  To evaluate \(df/dx\) at \(i\) we have several options such as the following first-order <span class="red">backward</span>,
+  second-order <span class="red">central</span> and first-order <span class="red">forward</span> options.
+  
+  \[ \left. \frac{df}{dx} \right|_i \approx \frac{f_i - f_{i-1}}{h}      + \mathcal{O}(h)   \tag{1.1a} \]
+  \[ \left. \frac{df}{dx} \right|_i \approx \frac{f_{i+1} - f_{i-1}}{2h} + \mathcal{O}(h^2) \tag{1.1b} \]
+  \[ \left. \frac{df}{dx} \right|_i \approx \frac{f_{i+1} - f_{i}}{h}    + \mathcal{O}(h)   \tag{1.1c} \]
+  
+  where \(h\) is the constant spacing of the \(x\) data points.
+  
+  <br><br>
+  
+  \(d^2f/dx^2\) can be approximated in similar ways. Below is the frequently used second-order accurate <span class="red">central
+  </span> option as an example
+
+  \[ \left. \frac{d^2f}{dx^2} \right|_i \approx \frac{f_{i-1} - 2f_i + f_{i+1}}{h^2} \tag{1.2}\]
+  
+  Consider a function \(f(x)\) that needs to be integrated from \(x=a\) to \(x=b\). Out of several options, the
+  most commonly used one in the finite volume method is the <span class="red">mid-point integration</span> given
+  below, which considers the integrand to be constant over the range \([a,b]\) at its mid-point value.
+  
+  \[ \int_a^b{f(x) \, dx} \approx f\left(\frac{a+b}{2}\right)(b-a) \tag{1.3} \]
+  
+  
+  <a name="1.2">
+  <p id="main_h2">1.2. ODEs</p>
+  
+  Consider the following first order ODE supported with an initial condition, forming an initial value problem.
+  \[ \frac{dy}{dt}=f(t,y) \quad , \quad y(t_0) = t_0 \tag{1.4} \]
+  
+  The first-order accurate explicit <span class="red">Euler's method</span> solves this ODE as follows
+  
+  \[ y_{i+1} = y_i + h f_i \tag{1.5} \]
+  
+  where \(y_i = y(t_i)\) and \(t_i = t_0 + hi\), with \(h\) being the constant step size used to discretize the
+  \(t\) domain. We can use this method to discretize the time derivatives of our flow equations.
+  
+  <br><br>
+
+  To give another example, the first-order accurate <span class="red">implicit Euler's method</span> works as follows
+  
+  \[ y_{i+1} = y_i + h f_{i+1} \tag{1.6} \]
+  
+  which is implicit because the unknown \(y_{i+1}\) appears on both sides of the equation (note that \(f_{i+1}\)
+  depends on \(y_{i+1}\)).
+  
+  <br><br>
+  
+  Another popular method used in CFD is the second-order accurate implicit <span class="red">trapezoidal method</span>,
+  also called the Crank-Nicolson method or the implicit mid-point method.
+  
+  \[ y_{i+1} = y_i + \frac{h}{2} \left( f_i + f_{i+1} \right) \tag{1.7} \]
+  
+  Another common choice is the second-order accurate version of the explicit multi-step <span class="red">Adams-Bashforth
+  method</span>, given below
+  
+  \[ y_{i+2} = y_i + \frac{3h}{2} f_{i+1} - \frac{h}{2} f_i \tag{1.8} \]
+
+  The following third-order accurate version of explicit <span class="red">Runge-Kutta method</span> is also used frequently
+  in CFD solvers
+  
+  \[ y_{i+1} = y_i + \frac{h}{6} \left( k_1 + 4k_2 + k_3 \right) \tag{1.9} \]
+
+  where \(k_1 = f_i , \, k_2 = f(t_{i+1/2}, y_i+\frac{h}{2}k_1) , \, k_3 = f(t_{i+1}, y_i-hk_1+2hk_2) \).
+  
+  <br><br>
+  
+  There are several other ways to solve Eqn. (1.6) but these are enough to start.
+  
+  <a name="1.3">
+  <p id="main_h2">1.3. PDEs</p>
+
+  Most probably you are familiar with the finite difference method solution of PDEs governing problems such
+  as the following <span class="red">Poisson's equation</span> on a square domain. This is an example of an elliptic PDE.
+
+  \[ \nabla ^2 \theta = f(x,y) \quad , \quad 0 \le x,y \le L \tag{1.10} \]
+  
+  Consider a structured, uniform mesh with constant node spacing \(h\). Laplacian of Eqn. (1.10) can be
+  discretized at node (i,j) of this mesh using the second-order central differencing for the derivatives as follows
+
+  \[ \nabla ^2 \theta _{i,j} = \left( \frac{\partial ^2 \theta}{\partial x^2} + \frac{\partial ^2 \theta}{\partial y^2} \right) _{i,j}
+     \approx \frac{\theta_{i+1,j} - 2\theta_{i,j} + \theta_{i-1,j}}{h^2} + \frac{\theta_{i,j+1} - 2\theta_{i,j} + \theta_{i,j-1}}{h^2} \tag{1.11} \]
+  
+  Using this approximation in Eqn. (1.10), the discretized equation at node (i,j) becomes
+  
+  \[ \frac{\theta_{i+1,j} - 2\theta_{i,j} + \theta_{i-1,j}}{h^2} + \frac{\theta_{i,j+1} - 2\theta_{i,j} + \theta_{i,j-1}}{h^2} = f_{i,j} \tag{1.12} \]
+  
+  Writing this equation for every node and treating the boundary nodes specially based on the specified boundary
+  conditions, we can obtain a linear algebraic equation system for the unknown \(\theta\) values at the mesh nodes. 
+  
+  <br><br>
+  
+  Another PDE example is the following <span class="red">heat equation</span>, which is parabolic in nature.
+  
+  \[ \frac{\partial \theta}{\partial t} = \nabla ^2 \theta \quad , \quad 0 \le x,y \le L \quad ,
+     \quad  0 \le t \le t_{final} \tag{1.13} \]
+  
+  This is both and initial and boundary value problem, with dependencies to both time and space. We typically solve
+  these problems in a time marching manner, in which we start with an initial condition and find the solution
+  at all the grid nodes at the next time level, and then the next time level and so on. Space derivatives can be
+  discretized as done above for the Poisson's equation, and time discretizaion can be done using one of the methods
+  discussed in the previous section for ODEs. If we go with the simplest <span class="red">explicit Euler's method</span>,
+  the discretized equation at node (i,j) and time level n becomes
+  
+  \[ \theta_{i,j}^{n+1} = \theta_{i,j}^{n} + \Delta t \left( \frac{\theta_{i+1,j} - 2\theta_{i,j} + 
+     \theta_{i-1,j}}{h^2} + \frac{\theta_{i,j+1} - 2\theta_{i,j} + \theta_{i,j-1}}{h^2} \right)^n \tag{1.14} \]
+  
+  where the superscript n shown the n<sup>th</sup> time level with constant time step size of \(\Delta t\). Because we
+  used an explicit formulation, this equation involves only a single unknown at the new time level n. We can write a
+  similar equation for every mesh node and calculate the new time level value of that node easily. However, this
+  simplicity comes with a price, which is related to stability, i.e. the need to use a small enough time step size to
+  get a physicallly meaningful, stable solution.
+  
+  <br><br>
+  
+  As an alternative we can use the <span class="red">implicit trapezoidal method</span> or time discretization, which yields
+  
+  \[ \theta_{i,j}^{n+1} = \theta_{i,j}^{n} + \frac{\Delta t}{2} \left[ \left( \frac{\theta_{i+1,j} - 2\theta_{i,j} + 
+     \theta_{i-1,j}}{h^2} + \frac{\theta_{i,j+1} - 2\theta_{i,j} + \theta_{i,j-1}}{h^2} \right)^n \right.  \, \ldots \]
+  
+  \[ \left. \left( \frac{\theta_{i+1,j} - 2\theta_{i,j} + \theta_{i-1,j}}{h^2} + 
+                   \frac{\theta_{i,j+1} - 2\theta_{i,j} + \theta_{i,j-1}}{h^2} \right)^{n+1} \right] \tag{1.15} \]
+  
+  This time the equation has several unknowns at the new time level n+1, and cannot be solved by itself. We need to write
+  similar equations for all the nodes, form a system of linear algebraic equations and solve it to get the unknown values
+  at the new time at all the nodes at once. This can be more pricey in terms of computation time in general, but it is
+  more stable than an explicit method.
+
+  
+  <a name="1.4">
+  <p id="main_h2">1.4. Vector Calculus</p>
+  
+  Finite Volume Method (FVM) is the most commonly used method to discretize the governing PDEs of CFD in space. It makes use
+  of a mesh divided into regions called cells, such as the 2D quadrilateral cell shown in Fig. 1.1.
+
+  <center> <img src="images/Fig.1.1.jpg" width="40%"></center>
+  <center> Fig. 1.1. A 2D finite volume cell with four faces and their unit outward normals </center>
+
+  <br><br>
+
+  FVM is an integral type method, in which we need evaluate integrals such as the following ones over these kind of cells
+  
+  \[ \int_{\Omega_P} {\left( \nabla \cdot \vec{A} \right) \, dxdy} \quad \quad \mathrm{or}
+     \quad \quad \int_{\Omega_P} {\nabla^2 \theta \, dxdy} \tag{1.16} \]
+  
+  where \(\Omega_P\) denotes the cell area and \(\partial \Omega_P\) is the boundary of the cell, which is composed
+  of 4 line segments for the cell shown in Fig. 1.1. \(\vec{A}\) and \(\theta\) are 2D vector and scalar fields, such as the
+  velocity field and the pressure field of a 2D flow problem. It is beneficial to convert these area integrals (or volume
+  integrals in 3D) to closed line integrals (or surface integrals in 3D) by using the <span class="red">Gauss divergence theorem
+  </span>, as shown below
+
+  \[ \oint_{\partial \Omega_P} {\left( \vec{A} \cdot \vec{n} \right) \, dxdy} \quad \quad \mathrm{or} \quad \quad
+  \oint_{\partial \Omega_P} {\left( \nabla \theta \cdot \vec{n} \right) \, dxdy} \tag{1.17} \]
+  
+  where one of the differential operators gets dropped and a dot product with the unit outward normal is picked. Then these
+  closed line integrals are converted into a summation of line integrals over individual faces, which can be approximated
+  using mid-point integration explained above. The resulting approximations are given below
+  
+  \[ \sum_{f=a,b,c,d} {\left( \vec{A}_f \cdot \vec{n}_f \right) \, L_f} \quad \quad \mathrm{or} \quad \quad
+  \sum_{f=a,b,c,d} {\left( \nabla \theta_f \cdot \vec{n}_f \right) \, L_f} \tag{1.18} \]
+
+  where \(L_f\) is the length of face f.
+  
+  
+  <a name="1.5">
+  <p id="main_h2">1.5. Linear Algebra</p>
+  
+  Numerical solutions of differential equations typically result in systems of linear algebraic equations, which can be solved
+  using basically two different kinds of methods; i) direct ones such as Gauss elimination, LU decomposition, etc., ii)
+  iterative ones such as Gauss-Seidel, conjugate gradients, etc. The systems encountered in CFD, especially for 3D problems,
+  are usually very large in size, for which iterative methods are advantageous over direct ones in terms of both memory
+  consumption and solution time.
+  
+  <br><br>
+  
+  We will make use of the iterative <span class="red">Gauss-Seidel method</span> a lot in our lectures due to its simplicity.
+  It is a point iterative method, which does not require the formation of the coefficient matrix of the equation system. In
+  such methods, we handle the equations one by one, not altogether. But they are known to have strict convergence requirements
+  and may suffer from slow convergence rates.
+  
+  
+  <a name="1.6">
+  <p id="main_h2">1.6. Give Feedback</p>
+
+  Please send your questions, comments, suggestions, corrections, etc. to <u>csert AT metu edu tr</u>.
+
+  <br><br>
+</div>
+
+<div class="footer">
+  Powered by MathJax and Google Fonts.
+</div>
+
+</body>
+</html>
+

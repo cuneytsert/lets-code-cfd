@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+
+<body>
+
+
+<div class="header">
+  <p id="header_h1"> Let's Code CFD  </p>
+  <p id="header_h2"> Lectures about Developing Flow Solvers  </p>
+  <p id="header_h3"> by Dr. Cuneyt Sert   </p>
+</div>
+
+
+<div class="nav">
+  <a href="index.html">   Home</a>
+  <a href="changes.html"> Change Log</a>
+  <a href="lec00.html">   Lecture 0</a>
+  <a href="lec01.html">   Lecture 1</a>
+  <a href="lec02.html">   Lecture 2</a>
+</div>
+
+
+
+<div class="main">
+
+  <a name="1">
+  <p id="main_h1"> Lecture 0. What is This and What Do We Need to Start?  </p>
+
+  <br>
+  Computational Fluid Dynamics (CFD), numerics and coding is what I do for teaching and research. I just love them.
+  And I am a strong believer that if you want to test whether you've really understood a subject or not, just go ahead
+  and try to teach it to others. If you can do it easily, like in a natural way, and also got somewhat positive feedback,
+  it is a good sign that you've really got it yourself. I normally teach these things in my lectures to my students, but
+  I just wanted to reach a broader audience and test myself at a larger scale. So, the basic idea here is to force myself
+  to prepare educational material to teach how to code flow solvers. Hopefully, you will benefit from these lectures and
+  at the same time I will see my weaknesses and get a chance to improve myself.
+  <br><br>
+  The target audience is senior engineering undergraduates and graduate students, as well as practicing fluid mechanics
+  enthusiasts who want to learn how flow solvers work. Those who like to develop their own solvers, or those who want to
+  contribute to an open-source CFD library may benefit from these lectures. CFD is very broad when you think of all
+  different kinds of applications and flow types. We will be focusing on the fundamentals here, like done in a typical
+  classroom setting.
+  <br><br>
+  I am aware that people prepare these kind of educational stuff as videos these days. New generations prefer to learn from
+  videos. It is fine, but I guess I am more like an old-school kind of guy. I also watch a lot of videos myself and learn
+  a lot from them, but I am not really good when it comes to preparing such videos. I feel much more comfortable when I
+  write things down.
+  <br><br>
+  Each lecture will come together with a code, and the lecture will explain the underlying mathematics of the method used,
+  discretization details and the code itself.
+
+
+  <a name="0.1">
+  <p id="main_h2">0.1. What Do We Need to Know to Start?</p>
+
+  You are expected to have taken introductory level programming, fluid mechanics and numerical methods courses, and
+  remember the key concepts. You need to know the Taylor series expansion, how to express truncation errors in big-O
+  notation, and how to perform basic finite differencing of derivatives. It will be good if you know methods such as
+  the Euler's method that are used to solve initial value problems governed by ODEs. It will also be good if you know
+  how to use the finite difference method to solve boundary value problems governed by PDEs. Also how to solve linear
+  algebraic equation systems using simple methods such as the Gauss-Seidel method. All these are topics covered in
+  introductory level numerical methods courses. We will be mostly using the finite volume method, which is an integral
+  type method, so you should better be familiar with vector calculus concepts such as gradients, divergence, Laplacian,
+  and integral theorems such as the Gauss divergence theorem. Some of these will be reviewed in the first lecture.
+  <br><br>
+  We will use C++ for coding, but in its simplest possible form, without any objects or templates. So you should be OK
+  even if you do not know any C++ at all. You can easily get a grasp of it by looking at the codes that I'll be sharing.
+  It is enough if you know the very basic programming concepts such as variables, loops, conditionals, functions, etc.
+  <br><br>
+  For the necessary hardware and software; I'll be using a standard workstation with nothing really special. Any
+  laptop or desktop that is not older than 10 years should work. Mine is a bit older than that actually :). I think
+  Linux is the best operating system to do number crunching and that is what I'll be using, but Windows with WSL or
+  macOS can also be used. I'll be working with the standard GNU C++ compiler. It is a good idea to use its latest
+  version that your system allows. Mine is g++ 13.3 right now, which was released about a year ago, as of this writing.
+  Older versions should work fine because we will not be using any fancy C++ feature that got introduced recently.
+  We may use third party libraries in the future, such as those for numerical algebra, but at the beginning all we
+  need is a C++ compiler.
+  <br><br>
+  <a href="https://www.learncpp.com"> Learncpp.com </a> is a popular C++ tutorial that you may find helpful in case
+  you want to study the language a bit before you start. It is very detailed and we'll not be using even 10% of
+  what is there. Another popular resource is  <a href="https://www.cppreference.com"> cppreference.com </a>, which is
+  a C++ reference site, not a tutorial. There are of course tons of other similar sites, but these two should be more
+  than enough to start.
+  <br><br>
+  You can write your codes in any editor you want but something that can do code completion and syntax highlighting
+  will help a lot. I'll be using Visual Studio Code, the popular free code development software from Microsoft. I
+  know that nowadays a lot of people like to code with AI assistance, and you can do that if you want, but I like
+  to write every single line myself, even though it takes a lot of time and effort. That's how I like it.
+
+
+  <a name="0.2">
+  <p id="main_h2">0.2. Give Feedback</p>
+
+  Please send your questions, comments, suggestions, corrections, etc. to <u>csert AT metu edu tr</u>.
+
+  <br><br>
+</div>
+
+<div class="footer">
+  Powered by MathJax and Google Fonts.
+</div>
+
+</body>
+</html>
+
